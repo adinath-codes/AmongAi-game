@@ -1,0 +1,26 @@
+@import 'tailwindcss';
+
+html,
+body {
+  cursor: url('/cursor/custom-cursor.svg'), default;
+}
+a,
+button,
+[role='button'],
+input[type='submit'],
+select,
+.cursor-pointer {
+  cursor:
+    url('/custom-cursor/custom-pointer.svg') 8 2,
+    pointer !important;
+}
+--webkit-scrollbar {
+  width: 4px;
+}
+--webkit-scrollbar-track {
+  background: transparent;
+}
+--webkit-scrollbar-thumb {
+  background: #334155; /* slate-700 */
+  border-radius: 10px;
+}
