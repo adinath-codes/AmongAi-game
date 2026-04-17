@@ -22,7 +22,7 @@ A few other features I am really proud of:
 
 ## Download Instructions
 Before playing, you need to set up the local AI engine so the bots can think.
-
+(go to the releases for more details: [v1.0.0](https://github.com/adinath-codes/AmongAi-game/releases/tag/v1.0.0))
 ## Download and install Ollama from ollama.com.
 
 Open your terminal or command prompt and run these four commands to download the bot models:
@@ -35,10 +35,8 @@ ollama pull llama3.2:1b
 Leave Ollama running in the background.
 
 Windows:
-1. Download the AmongAI_Windows_vX.X.X.zip file.
-2. Move the file to wherever you want to keep the game on your computer.
-3. Extract the zip file.
-4. Run the AmongAI.exe file. That is it.
+1. Download the amongai_0.1.0_x64-setup.exe file
+2. Run the AmongAI.exe file. That is it. :)
 
 ## Controls
 
