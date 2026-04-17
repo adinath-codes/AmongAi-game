@@ -1,7 +1,7 @@
 <img width="1600" height="900" alt="Among AI banner" src="https://github.com/user-attachments/assets/2fac631c-0727-496e-b9bd-02d30ffb5830" />
 
 ## Gameplay Demo Video:
-[![Among Ai Demo video](https://github.com/user-attachments/assets/eb1450b1-8038-4be7-a753-fc8124426b6e)](https://youtu.be/NgVzWHL8k5k)
+[![Among Ai Demo video](https://github.com/user-attachments/assets/eb1450b1-8038-4be7-a753-fc8124426b6e)](https://www.youtube.com/playlist?list=PLFV2HOHC10xVrJwzCryOUZGJLe9rsaHpE)
 [Click here to watch the video](https://www.youtube.com/playlist?list=PLFV2HOHC10xVrJwzCryOUZGJLe9rsaHpE)
 ## About the Game
 
