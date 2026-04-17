@@ -41,9 +41,13 @@ Windows:
 ## Controls
 
 Move: W, A, S, D or Arrow Keys
+<br/>
 Interact / Vent: Space
+<br/>
 Kill (Impostor only): Q
+<br/>
 Report Body: R
+<br/>
 Pause: Esc
 
 ## Gallery
