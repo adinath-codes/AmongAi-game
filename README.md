@@ -11,7 +11,7 @@ Among AI is a 2D social deduction experiment where you play alongside fully auto
 It showcases the integration of local LLMs, a custom memory system for the bots, and a seamless bridge between a React frontend and a Phaser game engine.
 <br>
 <br>
-Building this meant diving deep into complex systems. I put together a custom AI state machine, an A-star pathfinding grid, and an automated prompt engineering system that formats chat logs so the bots can argue and lie during emergency meetings.
+Building this meant diving deep into complex systems. I put together a custom AI state machine, an A-star pathfinding grid, and an automated prompt engineering system that formats chat logs so the bots can argue and lie during emergency meetings. (Damn i sound like i know a lot :) !! )
 <br>
 <br>
 A few other features I am really proud of:
