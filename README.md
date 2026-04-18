@@ -65,7 +65,8 @@ Pause: Esc
 <img width="1919" height="890" alt="demo phtotos (5)" src="https://github.com/user-attachments/assets/3bd01649-61f3-4e1a-9179-c1d703c7a85f" />
 <img width="1919" height="978" alt="demo phtotos (4)" src="https://github.com/user-attachments/assets/41547d88-7eaf-4b38-a87e-d227eb693446" />
 
-##AI Usage declaration
+----
+## AI Usage declaration
 I used gemini for research purposes only, specifically on how to bridge reactjs with phaser library. but i never vibe coded , No code, documentation, or assets of any kind are AI generated.
 
-If you read this far, thank you so much. I really hope you enjoy playing the Among Ai Demo.
+_**If you read this far, thank you so much. I really hope you enjoy playing the Among Ai Demo.**_
