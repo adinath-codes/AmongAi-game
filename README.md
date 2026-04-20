@@ -34,7 +34,7 @@ ollama pull llama3.2:1b
 ```
 Leave Ollama running in the background.
 
-If it doesn't run in the background or you face any issues try,
+if the chat does'nt works , that means it is due to the ollama not running , try this command and check whether the ollama is running using the taskbar.
 ```bash
 ollama list
 ```
