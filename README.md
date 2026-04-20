@@ -34,6 +34,12 @@ ollama pull llama3.2:1b
 ```
 Leave Ollama running in the background.
 
+If it doesn't run in the background or you face any issues try,
+```bash
+ollama list
+```
+to ensure it is working properly 
+
 Windows:
 1. Download the amongai_0.1.0_x64-setup.exe file
 2. Run the AmongAI.exe file. That is it. :)
