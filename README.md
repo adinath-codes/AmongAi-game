@@ -25,6 +25,12 @@ Before playing, you need to set up the local AI engine so the bots can think.
 (go to the releases for more details: [v1.0.0](https://github.com/adinath-codes/AmongAi-game/releases/tag/v1.0.0))
 ## Download and install Ollama from ollama.com.
 
+run this on the command prompt to set the environment variables and  accepts CORS
+
+```bash
+setx OLLAMA_ORIGINS "*"
+```
+
 Open your terminal or command prompt and run these four commands to download the bot models:
 ```bash
 ollama pull stablelm2
