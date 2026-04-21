@@ -37,6 +37,7 @@ ollama pull stablelm2
 ollama pull gemma3
 ollama pull qwen2.5:1.5b
 ollama pull llama3.2:1b
+ollama list
 ```
 Leave Ollama running in the background.
 
