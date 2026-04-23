@@ -26,15 +26,15 @@ export default function VoteChat({
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               style={{ borderColor: msg.color }}
-              className="flex flex-col rounded-lg bg-slate-800/40 border-l-4 p-2"
+              className="flex flex-col rounded-lg bg-slate-800/40 p-2 m-2"
             >
               <span
-                className="text-[10px] font-bold uppercase opacity-50"
+                className="text-2xl font-bold uppercase opacity-50"
                 style={{ color: msg.color }}
               >
                 {msg.sender}
               </span>
-              <p className="text-sm font-medium tracking-tight text-slate-200">
+              <p className="text-2xl font-medium tracking-tight text-slate-200">
                 {msg.text}
               </p>
             </motion.div>
@@ -52,7 +52,7 @@ export default function VoteChat({
           onChange={(e) => setChatInput(e.target.value)}
           onKeyDown={(e) => e.stopPropagation()}
           placeholder="Type a message..."
-          className="flex-1 bg-slate-950/50 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 transition-all placeholder:opacity-30"
+          className="flex-1 bg-slate-950/50 border border-slate-700 rounded-lg px-4 py-2 text-3xl focus:outline-none focus:ring-1 focus:ring-red-500 transition-all placeholder:opacity-30"
         />
         <button
           type="submit"

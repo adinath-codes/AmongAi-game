@@ -1,10 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Check, Clock, SkipForward, User, X } from 'lucide-react';
+import {
+  Check,
+  Clock,
+  MessageSquareWarningIcon,
+  SkipForward,
+  User,
+  X,
+} from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
-import CrewMateIcon from './CrewMateIcon';
+import CrewMateIcon from '../CrewMateIcon';
 import { motion, AnimatePresence } from 'framer-motion';
 import VoteChat from './voteChat';
-
+import EngineDiagnostics from './Troubleshoot';
 export interface PlayerData {
   id: string; // Unique name
   color: string;
@@ -48,31 +55,20 @@ export default function MeetingModal({
   const [chatInput, setChatInput] = useState('');
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const [confirmedVote, setConfirmedVote] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState<number>(120);
+  const [timeLeft, setTimeLeft] = useState<number>(10);
   const [allVotes, setAllVotes] = useState<Record<string, string>>({});
   const [ejectedPlayer, setEjectedPlayer] = useState<string | null>(null);
   const [isBotTyping, setIsBotTyping] = useState<boolean>(false);
   const [currBotName, setCurrBotName] = useState<string>('');
-
+  const [isTroubleOpen, setIsTroubleOpen] = useState<boolean>(false);
   const [botOrder] = useState<string[]>(['pink', 'yellow', 'blue', 'black']);
 
-  // 🧠 UPDATED: Replaced Qwen/Llama with 1B-2B class models
   const [botModels] = useState<Record<string, string>>({
     pink: 'stablelm2',
-    yellow: 'deepseek-coder:1.3b', // Uses <think> tags (stripped in code below)
+    yellow: 'gemma3:latest',
     blue: 'qwen2.5:1.5b',
     black: 'llama3.2:1b',
   });
-
-  // 🎭 UPDATED: Real Gamer Personas
-  // const [secretRole] = useState<Record<string, string>>({
-  //   pink: 'You are the IMPOSTOR! (Never admit this). Act like a confused Crewmate. Deflect blame onto PINK or BLACK. Say things like "cap" or "I was doing tasks".',
-  //   yellow:
-  //     'You are a CREWMATE. You are highly paranoid and accuse people quickly with no proof. Use words like "sus" and "bro".',
-  //   blue: 'You are a CREWMATE. You act like a detective. You ask for proof and locations. You are calm.',
-  //   black:
-  //     'You are a CREWMATE. You are impatient, use all lowercase, and just want people to vote. You heavily suspect YELLOW.',
-  // });
 
   const timeLeftRef = useRef(timeLeft);
   const botTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -351,9 +347,8 @@ ${botName.toUpperCase()} says:`;
           prompt: fullPrompt,
           stream: false,
           options: {
-            temperature: 0.8, // Slightly higher for more creative lying
-            num_predict: 150, // INCREASED: Give DeepSeek enough tokens to finish <thinking>
-            // NEW: Force the LLM to stop generating if it tries to write the next line of the script
+            temperature: 0.8,
+            num_predict: 40, // Reduced back to normal to force short sentences
             stop: ['\n', '[', 'CHRIS:', 'YELLOW:', 'PINK:', 'BLUE:', 'BLACK:'],
           },
         }),
@@ -362,18 +357,14 @@ ${botName.toUpperCase()} says:`;
       if (!response.ok) throw new Error(`HTTPS ERROR:${response.status}`);
       const data = await response.json();
 
-      // 🧼 UPDATED: The Sanitizer (Strips out weird LLM formatting)
+      // 🧼 The Sanitizer
       let reply = data.response.trim();
 
-      // 1. Strip <think> tags (Crucial for DeepSeek-R1)
-      reply = reply.replace(/<think>[\s\S]*?(<\/think>|$)/gi, '').trim();
-
-      // Fallback: If stripping the thought left the reply completely empty, give it a default gamer response
+      // Fallback: If the model returned absolutely nothing
       if (!reply) {
         reply = 'what are u talking about bro';
       }
 
-      // 2. Remove "Color:" or "[Color]:" prefix if the bot hallucinated it
       const prefixRegex = new RegExp(`^\\[?${botName}\\]?:?\\s*`, 'i');
       reply = reply.replace(prefixRegex, '').trim();
 
@@ -428,188 +419,227 @@ ${botName.toUpperCase()} says:`;
   if (!isOpen) return null;
 
   return (
-    <div className="absolute inset-0 z-50 bg-black/80 flex items-center justify-center backdrop-blur-sm py-20">
-      <div className="flex h-full w-[60vw] flex-col rounded-xl border border-slate-700 bg-slate-900/50 text-slate-200 shadow-2xl">
-        <div className="flex items-center justify-center border-b w-full border-slate-700 p-4 rounded-t-xl">
-          <h2 className="text-2xl font-bold uppercase tracking-widest text-red-500">
-            Emergency Meeting
-          </h2>
-          <div
-            className={`flex items-center gap-2 rounded-md px-3 py-1 transition-colors duration-300 ${timeLeft <= 10 && timeLeft > 0 ? 'bg-red-500/20 text-red-400 animate-pulse' : 'bg-slate-700 text-slate-200'}`}
-          >
-            <Clock size={20} />
-            <span className="w-full text-center">
-              Time left for {phase}: {timeLeft}
-            </span>
+    <>
+      {isTroubleOpen && (
+        <>
+          {/* <div
+            className="absolute w-full h-full left-0 top-0 z-40 bg-black/80"
+            onClick={() => setIsTroubleOpen(false)}
+          /> */}
+          <div className="absolute flex justify-center items-center inset-0 z-50 bg-black/80">
+            <div
+              className=" h-3/4 w-3/4 bg-blue-950/40 p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h1 className="text-white text-5xl text-center">
+                Wanna TroubleShoot ?
+              </h1>
+              <div className="flex items-center justify-center mt-2 mb-4">
+                <div className="bg-linear-to-r from-transparent via-slate-600 to-transparent w-1/2 h-0.5" />
+              </div>
+              <EngineDiagnostics handleClose={() => setIsTroubleOpen(false)} />
+              {/* <div className="bg-black w-full h-3/4">
+              <p className="text-slate-300 text-xl">&gt;&gt;&gt;{logMess}</p>
+            </div> */}
+            </div>
+          </div>
+        </>
+      )}
+      <div className="absolute inset-0 z-20 bg-black/80 flex items-center justify-center backdrop-blur-sm py-20">
+        <div className="flex h-full w-[60vw] flex-col rounded-xl border border-slate-700 bg-slate-900/50 text-slate-200 shadow-2xl">
+          <div className="flex items-center justify-center border-b w-full border-slate-700 p-4 rounded-t-xl">
+            <h2 className="text-5xl font-bold uppercase tracking-widest text-red-500">
+              Emergency Meeting
+            </h2>
+            <div
+              className={`flex items-center gap-2 border-l-2 border-slate-500/50 px-3 py-1 transition-colors duration-300 ${timeLeft <= 10 && timeLeft > 0 ? ' text-red-400 animate-pulse' : ' text-slate-200'} `}
+            >
+              <Clock size={20} />
+
+              <span className="text-4xl w-full text-center ">
+                Time left for {phase}: {timeLeft}
+              </span>
+            </div>
+          </div>
+          <h3 className="mb-4 text-2xl text-slate-400 font-semibold flex items-center gap-2">
+            <User size={18} /> Chat Room{' '}
+            {isBotTyping ? (
+              <span className="animate-pulse text-2xl text-emerald-400 ml-2">
+                {currBotName} is typing...
+              </span>
+            ) : (
+              <button
+                onClick={() => setIsTroubleOpen(true)}
+                className="text-xl w-[85%] text-gray-400 ml-2 flex justify-end items-center gap-2"
+              >
+                <MessageSquareWarningIcon size={15} /> Troubleshoot ?
+              </button>
+            )}
+          </h3>
+
+          <VoteChat
+            messages={messages}
+            chatInput={chatInput}
+            setChatInput={setChatInput}
+            handleSendMessage={handleSendMessage}
+          />
+        </div>
+
+        {/* Crew Roster / Results Screen */}
+        <div className="flex flex-1 h-full overflow-hidden px-4 gap-6">
+          <div className="flex-1 rounded-lg border border-slate-700 bg-slate-800/50 p-4 relative">
+            {phase === 'Results' ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500">
+                <h2 className="text-4xl font-bold tracking-widest text-white font-['Orbitron'] mb-4">
+                  VOTING COMPLETE
+                </h2>
+                <p
+                  className={`text-5xl font-bold tracking-wider ${ejectedPlayer ? 'text-red-500' : 'text-slate-400'}`}
+                >
+                  {ejectedPlayer
+                    ? `${ejectedPlayer.toUpperCase()} was ejected.`
+                    : 'No one was ejected. (Skipped / Tie)'}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between">
+                  <h3 className="mb-4 text-2xl text-slate-400 font-semibold flex items-center gap-2">
+                    <User size={18} /> Crew Roster{' '}
+                    {phase === 'Discussion'
+                      ? '(Wait till discussion ends to start voting)'
+                      : '(You can vote now)'}
+                  </h3>
+                  <button
+                    disabled={phase !== 'Voting'}
+                    onClick={() => {
+                      setSelectedVote('skip');
+                      setConfirmedVote('skip');
+                      const myData = players.find((player) => player.isMe);
+                      if (myData)
+                        setAllVotes((prev) => ({
+                          ...prev,
+                          [myData.id]: 'skip',
+                        }));
+                    }}
+                    className={`flex text-xl flex-row justify-center items-center gap-0.5 shadow-2xl border-2 rounded-xl w-20 h-10 text-slate-300 transition-colors ${phase === 'Voting' ? 'bg-blue-500/70 border-black hover:bg-blue-600/40 active:scale-95' : 'bg-slate-700 border-slate-600 opacity-50 cursor-not-allowed'}`}
+                  >
+                    SKIP <SkipForward size={15} />
+                  </button>
+                  {phase === 'Reveal' && votersWhoSkipped.length > 0 && (
+                    <div className="flex items-center gap-1 ml-4 bg-slate-800/80 px-3 py-1 rounded border border-slate-700">
+                      <span className="text-xs text-slate-400 mr-2 font-bold uppercase">
+                        Skipped:
+                      </span>
+                      {votersWhoSkipped.map((voterId) => (
+                        <div
+                          key={voterId}
+                          className="w-5 h-5 rounded border border-slate-900 shadow-md"
+                          style={{ backgroundColor: colorCodes[voterId] }}
+                          title={`${voterId} skipped`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 gap-3 overflow-y-auto p-2 pb-16">
+                  {players?.map((p: PlayerData) => {
+                    const isSelected = selectedVote === p.id;
+                    const canVote = phase === 'Voting' && !p.isDead;
+                    const hasVoted = Object.keys(allVotes).includes(p.id);
+
+                    return (
+                      <div
+                        key={p.id}
+                        onClick={() => setSelectedVote(p.id)}
+                        className={`relative flex items-center gap-3 ${!canVote ? 'cursor-not-allowed' : 'cursor-pointer'} rounded-lg border p-3 transition-all ${p.isDead ? 'border-red-900/50 bg-red-950/20 opacity-50 cursor-not-allowed' : 'border-slate-700 bg-slate-800'} ${isSelected ? 'ring-2 ring-emerald-500 border-emerald-500 bg-emerald-900/20' : ''} ${canVote && !isSelected ? 'hover:border-slate-500 hover:bg-slate-700' : ''}`}
+                      >
+                        <CrewMateIcon
+                          color={p.color}
+                          size={52}
+                          isDead={p.isDead}
+                        />
+                        <div className="flex flex-col text-left">
+                          <span
+                            className={`font-bold text-3xl ${p.isDead ? 'text-red-500 line-through' : 'text-slate-200'}`}
+                          >
+                            {p.id.toUpperCase()}{' '}
+                            {p.isMe ? '(YOU)' : `(${botModels[p.id]})`}
+                          </span>
+                        </div>
+
+                        {hasVoted && phase === 'Voting' && !isSelected && (
+                          <span className="absolute right-4 text-lg font-bold bg-slate-600 px-2 py-1 rounded text-slate-300">
+                            VOTED
+                          </span>
+                        )}
+                        {phase === 'Reveal' && votersForPlayer[p.id] && (
+                          <div className="absolute right-4 flex gap-1">
+                            {votersForPlayer[p.id].map((voterId) => (
+                              <div
+                                key={voterId}
+                                className="w-6 h-6 rounded border border-slate-900 shadow-md"
+                                style={{ backgroundColor: colorCodes[voterId] }}
+                                title={`${voterId} voted for ${p.id}`}
+                              />
+                            ))}
+                          </div>
+                        )}
+
+                        <AnimatePresence>
+                          {selectedVote === p.id && (
+                            <motion.div
+                              initial={{ scale: 0.5, opacity: 0, x: 20 }}
+                              animate={{ scale: 0.8, opacity: 1, x: 0 }}
+                              exit={{ scale: 0.8, opacity: 0, x: 10 }}
+                              transition={{
+                                type: 'spring',
+                                stiffness: 300,
+                                damping: 20,
+                              }}
+                              className="VOTINGBUTTONS absolute right-2 flex h-3/4 w-28 items-center justify-around"
+                            >
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfirmedVote(p.id);
+                                  const myData = players.find(
+                                    (player) => player.isMe,
+                                  );
+                                  if (myData)
+                                    setAllVotes((prev) => ({
+                                      ...prev,
+                                      [myData.id]: p.id,
+                                    }));
+                                }}
+                                className="CONFIRM flex justify-center items-center h-12 w-12 rounded-sm bg-emerald-500 hover:bg-emerald-600 transition-colors active:scale-95"
+                              >
+                                <Check
+                                  size={40}
+                                  className="text-slate-200 opacity-90"
+                                />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedVote(null);
+                                }}
+                                className="CONFIRM flex justify-center items-center h-12 w-12 rounded-sm bg-rose-500 hover:bg-rose-600 transition-colors active:scale-95"
+                              >
+                                <X size={40} className="text-slate-200" />
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </div>
-        <h3 className="mb-4 text-slate-400 font-semibold flex items-center gap-2">
-          <User size={18} /> Chat Room{' '}
-          {isBotTyping && (
-            <span className="animate-pulse text-emerald-400 ml-2">
-              {currBotName} is typing...
-            </span>
-          )}
-        </h3>
-        <VoteChat
-          messages={messages}
-          chatInput={chatInput}
-          setChatInput={setChatInput}
-          handleSendMessage={handleSendMessage}
-        />
       </div>
-
-      {/* Crew Roster / Results Screen */}
-      <div className="flex flex-1 h-full overflow-hidden px-4 gap-6">
-        <div className="flex-1 rounded-lg border border-slate-700 bg-slate-800/50 p-4 relative">
-          {phase === 'Results' ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500">
-              <h2 className="text-4xl font-bold tracking-widest text-white font-['Orbitron'] mb-4">
-                VOTING COMPLETE
-              </h2>
-              <p
-                className={`text-3xl font-bold tracking-wider ${ejectedPlayer ? 'text-red-500' : 'text-slate-400'}`}
-              >
-                {ejectedPlayer
-                  ? `${ejectedPlayer.toUpperCase()} was ejected.`
-                  : 'No one was ejected. (Skipped / Tie)'}
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="flex justify-between">
-                <h3 className="mb-4 text-slate-400 font-semibold flex items-center gap-2">
-                  <User size={18} /> Crew Roster{' '}
-                  {phase === 'Discussion'
-                    ? '(Wait till discussion ends to start voting)'
-                    : '(You can vote now)'}
-                </h3>
-                <button
-                  disabled={phase !== 'Voting'}
-                  onClick={() => {
-                    setSelectedVote('skip');
-                    setConfirmedVote('skip');
-                    const myData = players.find((player) => player.isMe);
-                    if (myData)
-                      setAllVotes((prev) => ({ ...prev, [myData.id]: 'skip' }));
-                  }}
-                  className={`flex flex-row justify-center items-center gap-0.5 shadow-2xl border-2 rounded-xl w-20 h-10 text-slate-300 transition-colors ${phase === 'Voting' ? 'bg-blue-500/70 border-black hover:bg-blue-600/40 active:scale-95' : 'bg-slate-700 border-slate-600 opacity-50 cursor-not-allowed'}`}
-                >
-                  SKIP <SkipForward size={15} />
-                </button>
-                {phase === 'Reveal' && votersWhoSkipped.length > 0 && (
-                  <div className="flex items-center gap-1 ml-4 bg-slate-800/80 px-3 py-1 rounded border border-slate-700">
-                    <span className="text-xs text-slate-400 mr-2 font-bold uppercase">
-                      Skipped:
-                    </span>
-                    {votersWhoSkipped.map((voterId) => (
-                      <div
-                        key={voterId}
-                        className="w-5 h-5 rounded border border-slate-900 shadow-md"
-                        style={{ backgroundColor: colorCodes[voterId] }}
-                        title={`${voterId} skipped`}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="grid grid-cols-1 gap-3 overflow-y-auto p-2 pb-16">
-                {players?.map((p: PlayerData) => {
-                  const isSelected = selectedVote === p.id;
-                  const canVote = phase === 'Voting' && !p.isDead;
-                  const hasVoted = Object.keys(allVotes).includes(p.id);
-
-                  return (
-                    <div
-                      key={p.id}
-                      onClick={() => setSelectedVote(p.id)}
-                      className={`relative flex items-center gap-3 ${!canVote ? 'cursor-not-allowed' : 'cursor-pointer'} rounded-lg border p-3 transition-all ${p.isDead ? 'border-red-900/50 bg-red-950/20 opacity-50 cursor-not-allowed' : 'border-slate-700 bg-slate-800'} ${isSelected ? 'ring-2 ring-emerald-500 border-emerald-500 bg-emerald-900/20' : ''} ${canVote && !isSelected ? 'hover:border-slate-500 hover:bg-slate-700' : ''}`}
-                    >
-                      <CrewMateIcon
-                        color={p.color}
-                        size={52}
-                        isDead={p.isDead}
-                      />
-                      <div className="flex flex-col text-left">
-                        <span
-                          className={`font-bold ${p.isDead ? 'text-red-500 line-through' : 'text-slate-200'}`}
-                        >
-                          {p.id.toUpperCase()}{' '}
-                          {p.isMe ? '(YOU)' : `(${botModels[p.id]})`}
-                        </span>
-                      </div>
-
-                      {hasVoted && phase === 'Voting' && !isSelected && (
-                        <span className="absolute right-4 text-xs font-bold bg-slate-600 px-2 py-1 rounded text-slate-300">
-                          VOTED
-                        </span>
-                      )}
-                      {phase === 'Reveal' && votersForPlayer[p.id] && (
-                        <div className="absolute right-4 flex gap-1">
-                          {votersForPlayer[p.id].map((voterId) => (
-                            <div
-                              key={voterId}
-                              className="w-6 h-6 rounded border border-slate-900 shadow-md"
-                              style={{ backgroundColor: colorCodes[voterId] }}
-                              title={`${voterId} voted for ${p.id}`}
-                            />
-                          ))}
-                        </div>
-                      )}
-
-                      <AnimatePresence>
-                        {selectedVote === p.id && (
-                          <motion.div
-                            initial={{ scale: 0.5, opacity: 0, x: 20 }}
-                            animate={{ scale: 0.8, opacity: 1, x: 0 }}
-                            exit={{ scale: 0.8, opacity: 0, x: 10 }}
-                            transition={{
-                              type: 'spring',
-                              stiffness: 300,
-                              damping: 20,
-                            }}
-                            className="VOTINGBUTTONS absolute right-2 flex h-3/4 w-28 items-center justify-around"
-                          >
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setConfirmedVote(p.id);
-                                const myData = players.find(
-                                  (player) => player.isMe,
-                                );
-                                if (myData)
-                                  setAllVotes((prev) => ({
-                                    ...prev,
-                                    [myData.id]: p.id,
-                                  }));
-                              }}
-                              className="CONFIRM flex justify-center items-center h-12 w-12 rounded-sm bg-emerald-500 hover:bg-emerald-600 transition-colors active:scale-95"
-                            >
-                              <Check
-                                size={40}
-                                className="text-slate-200 opacity-90"
-                              />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedVote(null);
-                              }}
-                              className="CONFIRM flex justify-center items-center h-12 w-12 rounded-sm bg-rose-500 hover:bg-rose-600 transition-colors active:scale-95"
-                            >
-                              <X size={40} className="text-slate-200" />
-                            </button>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

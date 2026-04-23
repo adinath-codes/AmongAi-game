@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Phaser from 'phaser';
 import { CrewmateColors, RGBMaskPipeline } from './RGBShader';
-import type { PlayerData } from '../components/MeetingModal';
+import type { PlayerData } from '../components/meetings/MeetingModal';
 import Memory from '../data/memory';
 import * as EasyStar from 'easystarjs';
 
@@ -10,7 +10,7 @@ interface TYPEtask {
   timeRange: number[];
 }
 const SPEED = 200;
-const TILE_SIZE = 25;
+const TILE_SIZE = 30;
 const ALL_TASKS: TYPEtask[] = [
   { name: 'cardTask', timeRange: [10, 15] },
   { name: 'eleTask', timeRange: [15, 25] },
@@ -39,7 +39,6 @@ const COLOR_HEX: Record<string, string> = {
   banana: '#ffe866',
   cyan: '#44ffee',
 };
-const SAB_TIMER = 20000;
 export default class BasicScene extends Phaser.Scene {
   minimapContainer!: any;
   minimap!: any;
@@ -56,6 +55,8 @@ export default class BasicScene extends Phaser.Scene {
   player!: any;
   dummies!: any;
   playerRole: 'impostor' | 'crewmate' = 'crewmate';
+  dummyRoles = ['crewmate', 'crewmate', 'crewmate', 'crewmate'];
+
   walkSound!: any;
 
   taskGroup!: Phaser.Physics.Arcade.StaticGroup;
@@ -716,11 +717,21 @@ export default class BasicScene extends Phaser.Scene {
 
   executeTasks() {
     if (this.currentTask === 'emergency_button') {
-      this.isMeetingCalled = true;
-      this.sound.play('emergencyMeeting', { volume: 0.3 });
-      setTimeout(() => {
-        this.executeReport(this.player.name);
-      }, 1500);
+      const meetRem = this.player.getData('emergencyMeetingRem');
+      if (meetRem > 0) {
+        this.player.setData('emergencyMeetingRem', meetRem - 1);
+        this.isMeetingCalled = true;
+        this.sound.play('emergencyMeeting', { volume: 0.3 });
+        setTimeout(() => {
+          this.executeReport(this.player.name);
+        }, 1500);
+      } else {
+        this.showAlert(
+          'You have only 1 emergency meeting , use it carefully !!',
+          'danger',
+          2000,
+        );
+      }
     } else {
       this.physics.pause();
       this.scene.pause();
@@ -959,26 +970,32 @@ export default class BasicScene extends Phaser.Scene {
     const maxCols = this.grids[0].length - 1;
     const maxRows = this.grids.length - 1;
 
-    const startGridX: number = Phaser.Math.Clamp(
+    let startGridX = Phaser.Math.Clamp(
       Math.floor(dummy.x / TILE_SIZE),
       0,
       maxCols,
     );
-    const startGridY: number = Phaser.Math.Clamp(
+    let startGridY = Phaser.Math.Clamp(
       Math.floor(dummy.y / TILE_SIZE),
       0,
       maxRows,
     );
-    const endGridX: number = Phaser.Math.Clamp(
-      Math.floor(endX / TILE_SIZE),
-      0,
-      maxCols,
-    );
-    const endGridY: number = Phaser.Math.Clamp(
-      Math.floor(endY / TILE_SIZE),
-      0,
-      maxRows,
-    );
+    let endGridX = Phaser.Math.Clamp(Math.floor(endX / TILE_SIZE), 0, maxCols);
+    let endGridY = Phaser.Math.Clamp(Math.floor(endY / TILE_SIZE), 0, maxRows);
+
+    // ════════════════════════════════════════════════════════════════════
+    // 🛡️ THE FIX: BULLETPROOF START & END NODES
+    // ════════════════════════════════════════════════════════════════════
+    // If the bot spawned on a wall, snap its starting brain to the floor
+    const safeStart = this.findClosestWalkable(startGridX, startGridY);
+    startGridX = safeStart.x;
+    startGridY = safeStart.y;
+
+    // If the Task Panel is inside a wall, snap their destination to the floor in front of it
+    const safeEnd = this.findClosestWalkable(endGridX, endGridY);
+    endGridX = safeEnd.x;
+    endGridY = safeEnd.y;
+    // ════════════════════════════════════════════════════════════════════
 
     this.easystar.findPath(
       startGridX,
@@ -1115,14 +1132,10 @@ export default class BasicScene extends Phaser.Scene {
   }
 
   checkWinCondition() {
-    let aliveCrew: number = 0;
-    let aliveImpostors: number = 0;
-    if (!this.player.getData('isDead')) {
-      if (this.playerRole === 'crewmate') aliveCrew++;
-    } else {
-      this.player.setVelocity(0);
-    }
+    let aliveCrew = 0;
+    let aliveImpostors = 0;
 
+    // 1. Count the human player exactly once
     if (!this.player.getData('isDead')) {
       if (this.playerRole === 'crewmate') aliveCrew++;
       else if (this.playerRole === 'impostor') aliveImpostors++;
@@ -1130,7 +1143,7 @@ export default class BasicScene extends Phaser.Scene {
       this.player.setVelocity(0); // Keep their corpse still
     }
 
-    // Count the AI bots
+    // 2. Count the AI bots
     this.dummies.getChildren().forEach((d: any) => {
       const dummy = d as Phaser.Physics.Arcade.Sprite;
       if (!dummy.getData('isDead')) {
@@ -1138,23 +1151,29 @@ export default class BasicScene extends Phaser.Scene {
         else if (dummy.getData('role') === 'impostor') aliveImpostors++;
       }
     });
+
+    // 3. TRIGGER VICTORIES (Fixed bracket nesting)
     if (aliveImpostors === 0) {
       console.log('🎉 CREWMATES WIN! The Impostor is dead.');
       this.physics.pause();
       if ((window as any).triggerGameOver) {
         (window as any).triggerGameOver('crewmate');
       }
-      if (aliveCrew === 0) {
-        this.physics.pause();
-        if ((window as any).triggerGameOver)
-          (window as any).triggerGameOver('impostor');
+    } else if (aliveCrew === 0) {
+      console.log('🔪 IMPOSTOR WINS! All crewmates are dead.');
+      this.physics.pause();
+      if ((window as any).triggerGameOver) {
+        (window as any).triggerGameOver('impostor');
       }
-      if (this.player.getData('isDead')) {
-        this.physics.pause();
-        if ((window as any).triggerGameOver)
-          (window as any).triggerGameOver(
-            this.playerRole === 'impostor' ? 'crewmate' : 'impostor',
-          );
+    }
+    // NEW: Instantly end if the human player dies (so you don't stare at a blank screen)
+    else if (this.player.getData('isDead')) {
+      console.log('💀 YOU DIED! Game Over.');
+      this.physics.pause();
+      if ((window as any).triggerGameOver) {
+        (window as any).triggerGameOver(
+          this.playerRole === 'impostor' ? 'crewmate' : 'impostor',
+        );
       }
     }
   }
@@ -1315,7 +1334,7 @@ export default class BasicScene extends Phaser.Scene {
     return 'skip';
   }
 
-  requestoBotMemory(botName: string): string {
+  requestBotMemory(botName: string): string {
     let mem: string = '';
     this.dummies.getChildren().forEach((d: any) => {
       const dummy = d as Phaser.Physics.Arcade.Sprite;
@@ -1340,6 +1359,26 @@ export default class BasicScene extends Phaser.Scene {
       return dummy.getData('role');
     }
     return 'crewmate';
+  }
+  requestSetPlayerRole(playerRole: 'crewmate' | 'impostor'): void {
+    console.warn('TRIGGERED ME AS', playerRole);
+    // Roll the dice for the human player
+    if (playerRole === 'impostor') {
+      this.isDummyImpostor = false;
+    } else {
+      this.isDummyImpostor = true;
+      this.dummyRoles = ['impostor', 'crewmate', 'crewmate', 'crewmate']; // The player is innocent, so we hide 1 impostor among the 4 bots
+      Phaser.Utils.Array.Shuffle(this.dummyRoles);
+    }
+
+    this.setPlayerRole(playerRole);
+    let i = 0;
+    this.dummies.children.iterate((dummy: any) => {
+      dummy.setData('role', this.dummyRoles[i]);
+      i++;
+    });
+    console.log(this.dummies);
+    console.warn('CALLED AS:', this.playerRole.toUpperCase());
   }
   calculateEscapePoint(
     dummy: Phaser.Physics.Arcade.Sprite,
@@ -1413,6 +1452,15 @@ export default class BasicScene extends Phaser.Scene {
     dummy.setData('isFollowing', true);
     dummy.setData('followTarget', target);
     dummy.setData('lastPingTime', 0);
+  }
+  triggerPanicState(
+    dummy: Phaser.Physics.Arcade.Sprite,
+    threat: Phaser.Physics.Arcade.Sprite,
+  ) {
+    dummy.setData('isWorking', false);
+    dummy.setData('isGoingToTask', false);
+    dummy.setData('isFollowing', false);
+    const meetingsLeft = dummy.getData('emergencyMeetingRem');
   }
 
   findClosestWalkable(gridX: number, gridY: number): { x: number; y: number } {
@@ -1550,9 +1598,10 @@ export default class BasicScene extends Phaser.Scene {
     (window as any).completedPlayerTasks = this.completePlayerTask.bind(this);
     (window as any).processEjection = this.processEjection.bind(this);
     (window as any).requestSusVote = this.requestSusVote.bind(this);
-    (window as any).requestBotMemory = this.requestoBotMemory.bind(this);
+    (window as any).requestBotMemory = this.requestBotMemory.bind(this);
     (window as any).requestBotRole = this.requestBotRole.bind(this);
-
+    (window as any).requestSetPlayerRole = this.requestSetPlayerRole.bind(this);
+    console.log('PHASER JUST ATTACHED THE FUNCTION');
     const map = this.add.image(0, 0, 'map_Skeld').setOrigin(0, 0);
     this.physics.world.setBounds(0, 0, map.width, map.height);
     const mapData = this.cache.json.get('level_design');
@@ -1679,23 +1728,13 @@ export default class BasicScene extends Phaser.Scene {
     this.player.body.setSize(20, 20).setOffset(120, 150);
     this.player.name = 'chris';
     this.player.setData('isDead', false);
-    this.player.setData('nextKillTime', 0);
+    this.player.setData('nextKillTime', 15000);
     this.player.setData('currTaskIndex', 0);
-    this.player.setData('nextSabotageTime', SAB_TIMER);
+    this.player.setData('nextSabotageTime', 30000);
     this.player.setData('memory', new Memory());
     this.player.setData('colorName', 'red'); //  needed for getColorHex
-    const rolePool = [
-      'impostor',
-      'crewmate',
-      'crewmate',
-      'crewmate',
-      'crewmate',
-    ];
-    Phaser.Utils.Array.Shuffle(rolePool);
-    this.setPlayerRole(rolePool[0] as 'impostor' | 'crewmate');
+    this.player.setData('emergencyMeetingRem', 1);
 
-    // If the player is a crewmate, one of the bots MUST be the impostor
-    this.isDummyImpostor = rolePool[0] === 'crewmate';
     const renderer = this.renderer as Phaser.Renderer.WebGL.WebGLRenderer;
     renderer.pipelines.addPostPipeline('RGBMask', RGBMaskPipeline);
 
@@ -1705,7 +1744,7 @@ export default class BasicScene extends Phaser.Scene {
     this.applyColorPreset(dum1, 'yellow');
     dum1.name = 'yellow';
     this.isDummyImpostor = true;
-    dum1.setData('role', rolePool[1]);
+    dum1.setData('role', 'crewmate');
     dum1.setData('todoTasksIndex', Phaser.Utils.Array.Shuffle([0, 1, 2, 3, 4]));
     dum1.setData('isAllTaskDone', false);
 
@@ -1714,22 +1753,27 @@ export default class BasicScene extends Phaser.Scene {
     dum2.name = 'pink';
     dum2.setData('todoTasksIndex', Phaser.Utils.Array.Shuffle([0, 1, 2, 3, 4]));
     dum2.setData('isAllTaskDone', false);
-    dum2.setData('role', rolePool[2]);
+    dum2.setData('role', 'crewmate');
 
     const dum3 = this.dummies.create(2000, 480, 'player_walk');
     this.applyColorPreset(dum3, 'blue');
     dum3.name = 'blue';
     dum3.setData('todoTasksIndex', Phaser.Utils.Array.Shuffle([0, 1, 2, 3, 4]));
     dum3.setData('isAllTaskDone', false);
-    dum3.setData('role', rolePool[3]);
+    dum3.setData('role', 'crewmate');
 
-    const dum4 = this.dummies.create(1900, 480, 'player_walk');
+    const dum4 = this.dummies.create(2500, 480, 'player_walk');
     this.applyColorPreset(dum4, 'black');
     dum4.name = 'black';
     dum4.setData('todoTasksIndex', Phaser.Utils.Array.Shuffle([0, 1, 2, 3, 4]));
     dum4.setData('isAllTaskDone', false);
-    dum4.setData('role', rolePool[4]);
+    dum4.setData('role', 'crewmate');
+    const allSpawns = [this.player, ...this.dummies.getChildren()];
 
+    Phaser.Actions.PlaceOnCircle(
+      allSpawns,
+      new Phaser.Geom.Circle(2250, 500, 130),
+    );
     this.visibleZones = this.physics.add.group();
     this.dummiesInteractZones = this.physics.add.group();
     this.personalZones = this.physics.add.group();
@@ -1739,11 +1783,12 @@ export default class BasicScene extends Phaser.Scene {
       dummy.setData('isFollowing', false);
       dummy.setData('followTarget', []);
       dummy.setData('isWorking', false);
+      dummy.setData('emergencyMeetingRem', 1);
       dummy.setData('isGoingToTask', false);
       dummy.setData('completedTasks', []);
       dummy.setData('currTaskIndex', 0);
-      dummy.setData('nextKillTime', 0);
-      dummy.setData('nextSabotageTime', SAB_TIMER);
+      dummy.setData('nextKillTime', 15000);
+      dummy.setData('nextSabotageTime', 30000);
       dummy.setData('memory', new Memory());
       dummy.setData('isFleeing', false);
       dummy.setData('activeThreat', null);
@@ -1927,13 +1972,14 @@ export default class BasicScene extends Phaser.Scene {
         5500,
       );
     });
-    this.time.delayedCall(14000, () => {
+    this.time.delayedCall(5000, () => {
       this.showAlert(
-        '👁 Check the SHIP REPORT (bottom-left) for ally activity',
+        'You have only 1 emergency meeting , use it carefully !!',
         'info',
-        5000,
+        5100,
       );
     });
+
     this.time.delayedCall(20000, () => {
       if (this.playerRole === 'impostor') {
         this.showAlert(
@@ -2471,6 +2517,11 @@ export default class BasicScene extends Phaser.Scene {
                 emergency_button_loc.y,
               ) < 50
             ) {
+              // 1. Take the bot's token away!
+              const currentMeetings = dummy.getData('emergencyMeetingRem');
+              dummy.setData('emergencyMeetingRem', currentMeetings - 1);
+
+              // 2. Call the meeting
               this.isMeetingCalled = true;
               this.sound.play('emergencyMeeting', { volume: 0.3 });
               setTimeout(() => {
@@ -2479,7 +2530,6 @@ export default class BasicScene extends Phaser.Scene {
             }
           }
         }
-
         //  THE BRAIN: SURVIVAL STATE MANAGER
         if (dummy.getData('role') === 'crewmate') {
           const RADAR_TICK_MS = 1500;
@@ -2504,16 +2554,33 @@ export default class BasicScene extends Phaser.Scene {
                 const memory = dummy.getData('memory') as Memory;
                 const sus = memory.susMatrix[activeThreat.name] || 0;
 
-                if (sus >= 50) {
-                  console.log(
-                    `[${dummy.name}] TERRIFIED of ${activeThreat.name}! Sprinting to Emergency Button!`,
-                  );
-                  dummy.setData('isPanicking', true);
-                  this.commandBotToSpot(
-                    dummy,
-                    emergency_button_loc.x,
-                    emergency_button_loc.y,
-                  );
+                if (sus >= 70) {
+                  const meetingsLeft = dummy.getData('emergencyMeetingRem');
+
+                  if (meetingsLeft > 0) {
+                    // PLAN A: Sprint to the button!
+                    console.log(
+                      `[${dummy.name}] TERRIFIED! Sprinting to Emergency Button!`,
+                    );
+                    dummy.setData('isPanicking', true);
+                    this.commandBotToSpot(
+                      dummy,
+                      emergency_button_loc.x,
+                      emergency_button_loc.y,
+                    );
+                  } else {
+                    // PLAN B: I have no meetings left! Run for my life!
+                    console.log(
+                      `[${dummy.name}] TERRIFIED but out of meetings! Fleeing!`,
+                    );
+                    const fleeDistance = 200; // Run far away
+                    const escapeNode = this.calculateEscapePoint(
+                      dummy,
+                      activeThreat,
+                      fleeDistance,
+                    );
+                    this.commandBotToSpot(dummy, escapeNode.x, escapeNode.y);
+                  }
                 }
               } else {
                 const fleeDistance = 150;
@@ -2542,75 +2609,13 @@ export default class BasicScene extends Phaser.Scene {
         if (dummy.getData('isFollowing') && !dummy.getData('isFleeing')) {
           const target = dummy.getData('followTarget');
           const currTime = this.time.now;
+          const lastPingTime = dummy.getData('lastPingTime') || 0;
 
-          let hasLOS = true;
-          const distToTarget = Phaser.Math.Distance.Between(
-            dummy.x,
-            dummy.y,
-            target.x,
-            target.y,
-          );
-          const angleToTarget = Phaser.Math.Angle.Between(
-            dummy.x,
-            dummy.y,
-            target.x,
-            target.y,
-          );
-
-          for (let d = 0; d < distToTarget; d += TILE_SIZE / 2) {
-            const checkX = dummy.x + Math.cos(angleToTarget) * d;
-            const checkY = dummy.y + Math.sin(angleToTarget) * d;
-            const gridX = Math.floor(checkX / TILE_SIZE);
-            const gridY = Math.floor(checkY / TILE_SIZE);
-            if (
-              gridY < 0 ||
-              gridY >= this.grids.length ||
-              gridX < 0 ||
-              gridX >= this.grids[0].length ||
-              this.grids[gridY][gridX] === 1
-            ) {
-              hasLOS = false;
-              break;
-            }
-          }
-
-          if (hasLOS) {
-            dummy.setData('isTravelling', false);
-            dummy.setData('currentPath', []);
-            this.physics.moveToObject(dummy, target, SPEED);
-            dummy.play('walk', true);
-            if ((dummy.body as Phaser.Physics.Arcade.Body).velocity.x < 0) {
-              dummy.setFlipX(true);
-            } else if (
-              (dummy.body as Phaser.Physics.Arcade.Body).velocity.x > 0
-            ) {
-              dummy.setFlipX(false);
-            }
-          } else {
-            if (!dummy.getData('isTravelling') && dummy.body) {
-              (dummy.body as Phaser.Physics.Arcade.Body).reset(
-                dummy.x,
-                dummy.y,
-              );
-            }
-
-            const lastPingTime = dummy.getData('lastPingTime') || 0;
-            const lastTargetPos = dummy.getData('lastTargetPos') || {
-              x: target.x,
-              y: target.y,
-            };
-            const targetMovedDist = Phaser.Math.Distance.Between(
-              target.x,
-              target.y,
-              lastTargetPos.x,
-              lastTargetPos.y,
-            );
-
-            if (targetMovedDist > 50 && currTime - lastPingTime > 150) {
-              dummy.setData('lastPingTime', currTime);
-              dummy.setData('lastTargetPos', { x: target.x, y: target.y });
-              this.commandBotToSpot(dummy, target.x, target.y);
-            }
+          // Recalculate the A* path to the target every 250ms.
+          // This costs more CPU, but guarantees they navigate corners flawlessly!
+          if (currTime - lastPingTime > 250) {
+            dummy.setData('lastPingTime', currTime);
+            this.commandBotToSpot(dummy, target.x, target.y);
           }
         }
 
@@ -2626,7 +2631,7 @@ export default class BasicScene extends Phaser.Scene {
               nextStep.x,
               nextStep.y,
             );
-            if (distance < 50) {
+            if (distance < 15) {
               path.shift();
               if (path.length === 0) {
                 dummy.body?.reset(nextStep.x, nextStep.y);
@@ -2661,45 +2666,18 @@ export default class BasicScene extends Phaser.Scene {
                 }
               }
             } else {
+              // PURE A* FOLLOWER: No whiskers, no steering. Just walk directly to the safe grid node.
               const speed = SPEED;
               this.physics.moveTo(dummy, nextStep.x, nextStep.y, speed);
 
-              // CHEAP WHISKER RAYCAST
-              const body = dummy.body as Phaser.Physics.Arcade.Body;
-              const velocityAngle = Math.atan2(
-                body.velocity.y,
-                body.velocity.x,
-              );
-              const whiskerDist = 20;
-
-              const leftX =
-                dummy.x + Math.cos(velocityAngle - 0.6) * whiskerDist;
-              const leftY =
-                dummy.y + Math.sin(velocityAngle - 0.6) * whiskerDist;
-              const rightX =
-                dummy.x + Math.cos(velocityAngle + 0.6) * whiskerDist;
-              const rightY =
-                dummy.y + Math.sin(velocityAngle + 0.6) * whiskerDist;
-
-              const leftGridX = Math.floor(leftX / TILE_SIZE);
-              const leftGridY = Math.floor(leftY / TILE_SIZE);
-              const rightGridX = Math.floor(rightX / TILE_SIZE);
-              const rightGridY = Math.floor(rightY / TILE_SIZE);
-
-              const hitLeft = this.grids[leftGridY]?.[leftGridX] === 1;
-              const hitRight = this.grids[rightGridY]?.[rightGridX] === 1;
-
-              if (hitLeft && !hitRight) {
-                body.velocity.x += Math.cos(velocityAngle + Math.PI / 2) * 150;
-                body.velocity.y += Math.sin(velocityAngle + Math.PI / 2) * 150;
-              } else if (hitRight && !hitLeft) {
-                body.velocity.x += Math.cos(velocityAngle - Math.PI / 2) * 150;
-                body.velocity.y += Math.sin(velocityAngle - Math.PI / 2) * 150;
-              }
-
               dummy.play('walk', true);
-              if (body.velocity.x < 0) dummy.setFlipX(true);
-              if (body.velocity.x > 0) dummy.setFlipX(false);
+              if ((dummy.body as Phaser.Physics.Arcade.Body).velocity.x < 0) {
+                dummy.setFlipX(true);
+              } else if (
+                (dummy.body as Phaser.Physics.Arcade.Body).velocity.x > 0
+              ) {
+                dummy.setFlipX(false);
+              }
             }
           }
         }

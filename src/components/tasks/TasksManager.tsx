@@ -1,9 +1,9 @@
-import AnimalTask from './tasks/AnimalTask';
-import SPSTask from './tasks/SPSTask';
-import XOTask from './tasks/XOTask';
+import AnimalTask from './AnimalTask';
+import SPSTask from './SPSTask';
+import XOTask from './XOTask';
 import { type JSX } from 'react';
-import UploadTask from './tasks/UploadTask';
-import SimonSaysTask from './tasks/SimonSaysTask';
+import UploadTask from './UploadTask';
+import SimonSaysTask from './SimonSaysTask';
 interface TYPEStasksManager {
   isTaskOpen: boolean;
   taskID: string;

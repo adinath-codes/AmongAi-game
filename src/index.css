@@ -1,7 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&display=swap');
 @import 'tailwindcss';
-
 html,
 body {
+  font-family: 'Amatic SC', sans-serif;
+  font-weight: 400;
+  font-style: normal;
   cursor: url('/cursor/custom-cursor.svg'), default;
 }
 a,
@@ -14,13 +17,13 @@ select,
     url('/custom-cursor/custom-pointer.svg') 8 2,
     pointer !important;
 }
---webkit-scrollbar {
+::-webkit-scrollbar {
   width: 4px;
 }
---webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: transparent;
 }
---webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background: #334155; /* slate-700 */
   border-radius: 10px;
 }
