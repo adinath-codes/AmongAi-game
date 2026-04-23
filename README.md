@@ -1,73 +1,85 @@
-# React + TypeScript + Vite
+<img width="1600" height="900" alt="Among AI banner" src="https://github.com/user-attachments/assets/2fac631c-0727-496e-b9bd-02d30ffb5830" />
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Gameplay Demo Video:
+[![Among Ai Demo video](https://github.com/user-attachments/assets/eb1450b1-8038-4be7-a753-fc8124426b6e)](https://www.youtube.com/playlist?list=PLFV2HOHC10xVrJwzCryOUZGJLe9rsaHpE)
+[Click here to watch the video](https://www.youtube.com/playlist?list=PLFV2HOHC10xVrJwzCryOUZGJLe9rsaHpE)
+## About the Game
 
-Currently, two official plugins are available:
+Among AI is a 2D social deduction experiment where you play alongside fully autonomous AI bots. You play as either a crewmate trying to complete tasks or an impostor trying to eliminate everyone. The twist is that every bot has its own memory, pathfinding, and a brain powered by local Large Language Models.
+<br>
+<br>
+It showcases the integration of local LLMs, a custom memory system for the bots, and a seamless bridge between a React frontend and a Phaser game engine.
+<br>
+<br>
+Building this meant diving deep into complex systems. I put together a custom AI state machine, an A-star pathfinding grid, and an automated prompt engineering system that formats chat logs so the bots can argue and lie during emergency meetings. (Damn i sound like i know a lot :) !! )
+<br>
+<br>
+A few other features I am really proud of:
+- Fully autonomous bots that can roam, fake tasks, stalk players, and report dead bodies.
+- Local LLM integration using Ollama for real-time, dynamic chat without API costs.
+- A custom memory matrix where bots track suspicion levels and remember witness events.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-## React Compiler
+## Download Instructions
+Before playing, you need to set up the local AI engine so the bots can think.
+(go to the releases for more details: [v1.0.0](https://github.com/adinath-codes/AmongAi-game/releases/tag/v1.0.0))
+## Download and install Ollama from ollama.com.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+run this on the command prompt to set the environment variables and  accepts CORS
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+setx OLLAMA_ORIGINS "*"
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Open your terminal or command prompt and run these four commands to download the bot models:
+```bash
+ollama pull stablelm2
+ollama pull gemma3
+ollama pull qwen2.5:1.5b
+ollama pull llama3.2:1b
+ollama list
 ```
+Leave Ollama running in the background.
+
+if the chat does'nt works , that means it is due to the ollama not running , try this command and check whether the ollama is running using the taskbar.
+```bash
+ollama list
+```
+to ensure it is working properly 
+
+Windows:
+1. Download the amongai_0.1.0_x64-setup.exe file
+2. Run the AmongAI.exe file. That is it. :)
+
+## Controls
+
+Move: W, A, S, D or Arrow Keys
+<br/>
+Interact / Vent: Space
+<br/>
+Kill (Impostor only): Q
+<br/>
+Report Body: R
+<br/>
+Pause: Esc
+
+## Gallery
+
+<img width="1906" height="994" alt="Screenshot 2026-04-17 034000" src="https://github.com/user-attachments/assets/305a82a7-b6f1-4bac-89ea-5a209ad679ab" />
+<img width="1919" height="969" alt="demo phtotos (3)" src="https://github.com/user-attachments/assets/331f772a-e579-4c3c-b979-94271144a0d6" />
+<img width="1917" height="947" alt="demo phtotos (2)" src="https://github.com/user-attachments/assets/4b2fb606-e807-49f3-9d9f-b0cb3c224ade" />
+<img width="1919" height="975" alt="demo phtotos (1)" src="https://github.com/user-attachments/assets/02ea63e5-d876-41c8-8212-e2e473b2957d" />
+<img width="1919" height="891" alt="demo photos (5)" src="https://github.com/user-attachments/assets/a079ad0a-987e-4aad-950a-6d4852ac9536" />
+<img width="1919" height="878" alt="demo photos (4)" src="https://github.com/user-attachments/assets/9aa3d264-e12a-4889-935f-deb7e8381718" />
+<img width="1919" height="896" alt="demo photos (3)" src="https://github.com/user-attachments/assets/6834f3e4-9b02-4841-8b00-88fcab7d2288" />
+<img width="1917" height="888" alt="demo photos (2)" src="https://github.com/user-attachments/assets/a77228ba-7f13-45ff-9916-0b60640ddb39" />
+<img width="1919" height="882" alt="demo photos (1)" src="https://github.com/user-attachments/assets/b35c210e-db3a-43fd-a2da-d1efe297ccb9" />
+<img width="1311" height="700" alt="demo phtotos (6)" src="https://github.com/user-attachments/assets/743daaa6-2e0a-46b3-884b-a47890bb4dd4" />
+<img width="1919" height="890" alt="demo phtotos (5)" src="https://github.com/user-attachments/assets/3bd01649-61f3-4e1a-9179-c1d703c7a85f" />
+<img width="1919" height="978" alt="demo phtotos (4)" src="https://github.com/user-attachments/assets/41547d88-7eaf-4b38-a87e-d227eb693446" />
+
+----
+## AI Usage declaration
+I used gemini for research purposes only, specifically on how to bridge reactjs with phaser library. but i never vibe coded , No code, documentation, or assets of any kind are AI generated.
+
+_**If you read this far, thank you so much. I really hope you enjoy playing the Among Ai Demo.**_
