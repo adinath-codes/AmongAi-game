@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "Among AI",
-    "version": "0.1.0"
+    "version": "1.0.0"
   },
   "tauri": {
     "allowlist": {
@@ -57,7 +57,7 @@
       {
         "maximized": true,
         "decorations": true,
-        "title": "amongai",
+        "title": "Among Ai | A battle field of popular Ai models",
         "additionalBrowserArgs": "--autoplay-policy=no-user-gesture-required"
       }
     ]

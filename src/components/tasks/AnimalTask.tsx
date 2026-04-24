@@ -164,12 +164,14 @@ export default function AnimalQuiz({
         setFeedback(null);
       } else {
         setDone(true);
-        if (typeof window.completedPlayerTasks === 'function') {
-          window.completedPlayerTasks(taskID);
+        if (score > (rounds.length - 1) / 2) {
+          if (typeof window.completedPlayerTasks === 'function') {
+            window.completedPlayerTasks(taskID);
+          }
         }
         onClose();
       }
-    }, 1400);
+    }, 1000);
   }
 
   function restart() {
@@ -261,6 +263,7 @@ export default function AnimalQuiz({
               }}
             />
             <div
+              className="flex justify-between gap-2"
               style={{
                 position: 'absolute',
                 bottom: -10,
@@ -273,6 +276,24 @@ export default function AnimalQuiz({
               }}
             />
           </div>
+          <button
+            onClick={restart}
+            style={{
+              marginTop: 16,
+              background: '#161b22',
+              border: '1px solid #30363d',
+              borderRadius: 10,
+              padding: '10px 24px',
+              color: '#e6edf3',
+              fontFamily: "'Orbitron', monospace",
+              fontSize: 10,
+              letterSpacing: 2,
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+            }}
+          >
+            Close
+          </button>
           <button
             onClick={restart}
             style={{

@@ -275,12 +275,14 @@ export default function AmongUsUpload({
     const next = taskIndex + 1;
     if (next >= totalTasks) {
       setGameOver(true);
-      setTimeout(() => {
-        if (typeof window.completedPlayerTasks === 'function') {
-          window.completedPlayerTasks(taskID);
-        }
-        onClose();
-      }, 2000);
+      if (tasksWon >= 2) {
+        setTimeout(() => {
+          if (typeof window.completedPlayerTasks === 'function') {
+            window.completedPlayerTasks(taskID);
+          }
+          onClose();
+        }, 2000);
+      }
     } else {
       setTaskIndex(next);
       setPhase('idle');
@@ -441,18 +443,30 @@ export default function AmongUsUpload({
             </div>
 
             <CrewmateBig color={endColor} />
-
-            <button
-              onClick={restart}
-              className="au-font cursor-pointer rounded-xl px-6 py-2.5 text-[9px] uppercase tracking-widest hover:opacity-75"
-              style={{
-                background: '#161b22',
-                border: '1px solid #30363d',
-                color: '#e6edf3',
-              }}
-            >
-              Play Again
-            </button>
+            <div className="flex justify-between gap-2">
+              <button
+                onClick={onClose}
+                className="au-font cursor-pointer rounded-xl px-6 py-2.5 text-[9px] uppercase tracking-widest hover:opacity-75"
+                style={{
+                  background: '#161b22',
+                  border: '1px solid #30363d',
+                  color: '#e6edf3',
+                }}
+              >
+                Close
+              </button>
+              <button
+                onClick={restart}
+                className="au-font cursor-pointer rounded-xl px-6 py-2.5 text-[9px] uppercase tracking-widest hover:opacity-75"
+                style={{
+                  background: '#161b22',
+                  border: '1px solid #30363d',
+                  color: '#e6edf3',
+                }}
+              >
+                Play Again
+              </button>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-4 w-full">

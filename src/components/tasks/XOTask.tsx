@@ -177,10 +177,12 @@ export default function TicTacToe({
     if (next >= rounds.length) {
       setDone(true);
       setTimeout(() => {
-        if (typeof window.completedPlayerTasks === 'function') {
-          window.completedPlayerTasks(taskID);
+        if (scoreX >= 3) {
+          if (typeof window.completedPlayerTasks === 'function') {
+            window.completedPlayerTasks(taskID);
+          }
+          onClose();
         }
-        onClose();
       }, 2000);
     } else {
       setCurrent(next);
@@ -252,17 +254,30 @@ export default function TicTacToe({
               X found {scoreX} winning moves out of {rounds.length}
             </div>
             <CrewmateBig color={endColor} />
-            <button
-              onClick={restart}
-              className="au-font mt-4 cursor-pointer rounded-xl px-6 py-2.5 text-[9px] uppercase tracking-widest transition-colors"
-              style={{
-                background: '#161b22',
-                border: '1px solid #30363d',
-                color: '#e6edf3',
-              }}
-            >
-              Play Again
-            </button>
+            <div className="flex justify-between gap-2">
+              <button
+                onClick={onClose}
+                className="au-font mt-4 cursor-pointer rounded-xl px-6 py-2.5 text-[9px] uppercase tracking-widest transition-colors"
+                style={{
+                  background: '#221b10',
+                  border: '1px solid #30363d',
+                  color: '#e6edf3',
+                }}
+              >
+                Close
+              </button>
+              <button
+                onClick={restart}
+                className="au-font mt-4 cursor-pointer rounded-xl px-6 py-2.5 text-[9px] uppercase tracking-widest transition-colors"
+                style={{
+                  background: '#161b22',
+                  border: '1px solid #30363d',
+                  color: '#e6edf3',
+                }}
+              >
+                Play Again
+              </button>
+            </div>
           </div>
         ) : (
           <>

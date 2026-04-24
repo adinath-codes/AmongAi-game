@@ -129,4 +129,12 @@ export default class Memory {
     });
     return target;
   }
+  //MEETING BASED LLM SUS MODIFICATION
+  applyMeetingBasedShift(shifts: Record<string, number>) {
+    Object.entries(shifts).forEach(([player, shiftAmount]) => {
+      if (typeof shiftAmount === 'number' && !isNaN(shiftAmount)) {
+        this.addSus(player, shiftAmount);
+      }
+    });
+  }
 }

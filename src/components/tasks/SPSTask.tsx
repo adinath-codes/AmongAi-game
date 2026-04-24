@@ -232,7 +232,7 @@ export default function SPS({
   const [animating, setAnimating] = useState(false);
 
   const totalRounds = 4;
-
+  const playerWon = playerScore >= 2;
   function play(choice: Choice) {
     if (roundOver || animating) return;
     setAnimating(true);
@@ -254,12 +254,14 @@ export default function SPS({
 
       if (round >= totalRounds) {
         setGameOver(true);
-        setTimeout(() => {
-          if (typeof window.completedPlayerTasks === 'function') {
-            window.completedPlayerTasks(taskID);
-          }
-          onClose();
-        }, 2000);
+        if (playerWon) {
+          setTimeout(() => {
+            if (typeof window.completedPlayerTasks === 'function') {
+              window.completedPlayerTasks(taskID);
+            }
+            onClose();
+          }, 2000);
+        }
       }
     }, 600);
   }
@@ -297,7 +299,6 @@ export default function SPS({
   }
 
   const progressPct = Math.round(((round - 1) / totalRounds) * 100);
-  const playerWon = playerScore >= 2;
   const endColor = playerWon ? '#3fb950' : '#f85149';
   const verdict =
     playerScore === cpuScore
@@ -437,18 +438,30 @@ export default function SPS({
                 }}
               />
             </div>
-
-            <button
-              onClick={restart}
-              className="au-font mt-3 cursor-pointer rounded-xl px-6 py-2.5 text-[9px] uppercase tracking-widest transition-opacity hover:opacity-75"
-              style={{
-                background: '#161b22',
-                border: '1px solid #30363d',
-                color: '#e6edf3',
-              }}
-            >
-              Play Again
-            </button>
+            <div className="flex justify-between gap-2">
+              <button
+                onClick={onClose}
+                className="au-font mt-3 cursor-pointer rounded-xl px-6 py-2.5 text-[9px] uppercase tracking-widest transition-opacity hover:opacity-75"
+                style={{
+                  background: '#161b22',
+                  border: '1px solid #30363d',
+                  color: '#e6edf3',
+                }}
+              >
+                Close
+              </button>
+              <button
+                onClick={restart}
+                className="au-font mt-3 cursor-pointer rounded-xl px-6 py-2.5 text-[9px] uppercase tracking-widest transition-opacity hover:opacity-75"
+                style={{
+                  background: '#161b22',
+                  border: '1px solid #30363d',
+                  color: '#e6edf3',
+                }}
+              >
+                Play Again
+              </button>
+            </div>
           </div>
         ) : (
           <>

@@ -349,7 +349,7 @@ export default class BasicScene extends Phaser.Scene {
     });
     if (this.shipReportLog.length > 30) this.shipReportLog.shift();
   }
-
+  //NOTE:Ship report is removed for Now
   refreshShipReport() {
     const panel = document.getElementById('_SHIP-REPORT-ENTRIES');
     if (!panel || !this.dummies) return;
@@ -630,7 +630,7 @@ export default class BasicScene extends Phaser.Scene {
       this.currentTarget = null;
       //  alert & ship log when player kills
       this.showAlert(
-        `💀 You eliminated ${victim.name}. Vent away!`,
+        `You eliminated ${victim.name}. Vent away!`,
         'danger',
         4000,
       );
@@ -657,14 +657,14 @@ export default class BasicScene extends Phaser.Scene {
       this.toggleLight(true);
       this.sound.stopByKey('sabotage');
       // ← NEW
-      this.showAlert('💡 Lights restored — meeting called!', 'success', 2500);
+      this.showAlert('Lights restored — meeting called!', 'success', 2500);
     }
     //  meeting alert
     if (reportedBy === this.player.name) {
-      this.showAlert('🚨 Emergency Meeting! Called by YOU.', 'warning', 3500);
+      this.showAlert('Emergency Meeting! Called by YOU.', 'warning', 3500);
     } else {
       this.showAlert(
-        `🚨 Emergency Meeting! ${reportedBy.toUpperCase()} called it.`,
+        `Emergency Meeting! ${reportedBy.toUpperCase()} called it.`,
         'warning',
         3500,
       );
@@ -701,6 +701,13 @@ export default class BasicScene extends Phaser.Scene {
     }
 
     this.sound.play('report');
+    this.time.delayedCall(5000, () => {
+      this.showAlert(
+        `Your chat are actively analaysed by the LLMs to decided whether to judge you and decide whether to vote you out , stay on your side or flee away from you, So chat with caution`,
+        'warning',
+        10000,
+      );
+    });
     Phaser.Actions.PlaceOnCircle(
       survivors,
       new Phaser.Geom.Circle(tableX, tableY, 180),
@@ -790,6 +797,9 @@ export default class BasicScene extends Phaser.Scene {
       }
       ventingSprite.setAlpha(1);
       ventingSprite.play('idle', true);
+      // ventingSprite.stop();
+      // ventingSprite.setTexture('player_walk');
+      // ventingSprite.setFrame(12);
       ventingSprite.setData('isGoingToVent', false);
       ventingSprite.setData('isWorking', false);
       ventingSprite.setData('isTravelling', false);
@@ -813,7 +823,7 @@ export default class BasicScene extends Phaser.Scene {
 
     //  alert and ship log for sabotage
     this.showAlert(
-      '⚡ LIGHTS SABOTAGED! Restoring in ~10 seconds...',
+      'LIGHTS SABOTAGED! Restoring in ~10 seconds...',
       'danger',
       10000,
     );
@@ -829,7 +839,7 @@ export default class BasicScene extends Phaser.Scene {
       this.toggleLight(true);
       this.sound.stopByKey('sabotage');
       //  lights-restored alert
-      this.showAlert('💡 Lights restored!', 'success', 3000);
+      this.showAlert('Lights restored!', 'success', 3000);
     });
   }
 
@@ -878,7 +888,7 @@ export default class BasicScene extends Phaser.Scene {
           !this.player.getData('isDead')
         ) {
           this.showAlert(
-            `🕳 You saw ${venterName} VENT! Report it!`,
+            `You saw ${venterName} VENT! Report it!`,
             'warning',
             6000,
           );
@@ -890,13 +900,15 @@ export default class BasicScene extends Phaser.Scene {
         if (observerSprite) {
           const room = this.getLocation(ventX, ventY);
           if (observerSprite.getData('role') !== 'impostor') {
-            this.commandBotToSpot(
-              observerSprite,
-              emergency_button_loc.x,
-              emergency_button_loc.y,
-            );
-            observerSprite.setData('isWorking', false);
-            observerSprite.setData('isPanicking', true);
+            const venterSprite =
+              venterName === this.player.name
+                ? this.player
+                : (this.dummies
+                    .getChildren()
+                    .find(
+                      (d: any) => d.name === venterName,
+                    ) as Phaser.Physics.Arcade.Sprite);
+            this.triggerPanicState(observerSprite, venterSprite);
             observerSprite.setData('venterName', venterName);
           }
           observerSprite
@@ -932,7 +944,7 @@ export default class BasicScene extends Phaser.Scene {
           !this.player.getData('isDead')
         ) {
           this.showAlert(
-            `👁 You saw ${killerName} KILL ${victimName}! Report it!`,
+            `You saw ${killerName} KILL ${victimName}! Report it!`,
             'danger',
             7000,
           );
@@ -947,20 +959,30 @@ export default class BasicScene extends Phaser.Scene {
             .getData('memory')
             .writeAllegation(killerName, 'KILLING', room);
           if (observerSprite.getData('role') !== 'impostor') {
-            this.commandBotToSpot(
-              observerSprite,
-              emergency_button_loc.x,
-              emergency_button_loc.y,
-            );
-            observerSprite.setData('isWorking', false);
-            observerSprite.setData('isPanicking', true);
+            const venterSprite =
+              killerName === this.player.name
+                ? this.player
+                : (this.dummies
+                    .getChildren()
+                    .find(
+                      (d: any) => d.name === killerName,
+                    ) as Phaser.Physics.Arcade.Sprite);
+            this.triggerPanicState(observerSprite, venterSprite);
             observerSprite.setData('venterName', killerName);
           }
         }
       }
     });
   }
-
+  broadcastMajorEvent(eventName: string) {
+    if (!this.player.getData('isDead'))
+      this.player.getData('memory')?.writeGlobalEvent(eventName);
+    this.dummies.getChildren().forEach((d: any) => {
+      const dummy = d as Phaser.Physics.Arcade.Sprite;
+      if (!dummy.getData('isDead'))
+        dummy.getData('memory')?.writeGlobalEvent(eventName);
+    });
+  }
   easyStarPathTraveller(
     dummy: Phaser.Physics.Arcade.Sprite,
     endX: number,
@@ -1083,8 +1105,9 @@ export default class BasicScene extends Phaser.Scene {
     });
 
     if (aliveWorkers.length === 0) return;
-
-    remainingTasks.forEach((taskIndex: number, i: number) => {
+    const numberOfTasksToKeep = Math.floor(remainingTasks.length / 2);
+    const halfRemainingTasks = remainingTasks.slice(0, numberOfTasksToKeep);
+    halfRemainingTasks.forEach((taskIndex: number, i: number) => {
       const unluckyWorker = aliveWorkers[i % aliveWorkers.length];
       const theirTasks = unluckyWorker.getData('todoTasksIndex') || [];
       theirTasks.push(taskIndex);
@@ -1154,13 +1177,13 @@ export default class BasicScene extends Phaser.Scene {
 
     // 3. TRIGGER VICTORIES (Fixed bracket nesting)
     if (aliveImpostors === 0) {
-      console.log('🎉 CREWMATES WIN! The Impostor is dead.');
+      console.log('CREWMATES WIN! The Impostor is dead.');
       this.physics.pause();
       if ((window as any).triggerGameOver) {
         (window as any).triggerGameOver('crewmate');
       }
     } else if (aliveCrew === 0) {
-      console.log('🔪 IMPOSTOR WINS! All crewmates are dead.');
+      console.log('IMPOSTOR WINS! All crewmates are dead.');
       this.physics.pause();
       if ((window as any).triggerGameOver) {
         (window as any).triggerGameOver('impostor');
@@ -1168,7 +1191,7 @@ export default class BasicScene extends Phaser.Scene {
     }
     // NEW: Instantly end if the human player dies (so you don't stare at a blank screen)
     else if (this.player.getData('isDead')) {
-      console.log('💀 YOU DIED! Game Over.');
+      console.log('YOU DIED! Game Over.');
       this.physics.pause();
       if ((window as any).triggerGameOver) {
         (window as any).triggerGameOver(
@@ -1183,10 +1206,10 @@ export default class BasicScene extends Phaser.Scene {
 
     //  ejection alert
     if (ejectedId === this.player.name) {
-      this.showAlert('☠ You were ejected into the void!', 'danger', 6000);
+      this.showAlert('You were ejected into the void!', 'danger', 6000);
     } else {
       this.showAlert(
-        `⚖ ${ejectedId.toUpperCase()} was ejected!`,
+        ` ${ejectedId.toUpperCase()} was ejected!`,
         'warning',
         5000,
       );
@@ -1313,16 +1336,6 @@ export default class BasicScene extends Phaser.Scene {
     return { x: baseX, y: baseY };
   }
 
-  broadcastMajorEvent(eventName: string) {
-    if (!this.player.getData('isDead'))
-      this.player.getData('memory')?.writeGlobalEvent(eventName);
-    this.dummies.getChildren().forEach((d: any) => {
-      const dummy = d as Phaser.Physics.Arcade.Sprite;
-      if (!dummy.getData('isDead'))
-        dummy.getData('memory')?.writeGlobalEvent(eventName);
-    });
-  }
-
   requestSusVote(dummyName: string, aliveIds: string[]): string {
     const dummy = this.dummies
       .getChildren()
@@ -1361,7 +1374,6 @@ export default class BasicScene extends Phaser.Scene {
     return 'crewmate';
   }
   requestSetPlayerRole(playerRole: 'crewmate' | 'impostor'): void {
-    console.warn('TRIGGERED ME AS', playerRole);
     // Roll the dice for the human player
     if (playerRole === 'impostor') {
       this.isDummyImpostor = false;
@@ -1377,8 +1389,15 @@ export default class BasicScene extends Phaser.Scene {
       dummy.setData('role', this.dummyRoles[i]);
       i++;
     });
-    console.log(this.dummies);
-    console.warn('CALLED AS:', this.playerRole.toUpperCase());
+  }
+  updateBotMemoryFromMeeting(botName: string, shifts: Record<string, number>) {
+    const dummy = this.dummies
+      .getChildren()
+      .find((d: any) => d.name === botName);
+    if (dummy) {
+      const memory = dummy.getData('memory') as Memory;
+      memory.applyMeetingBasedShift(shifts);
+    }
   }
   calculateEscapePoint(
     dummy: Phaser.Physics.Arcade.Sprite,
@@ -1461,6 +1480,24 @@ export default class BasicScene extends Phaser.Scene {
     dummy.setData('isGoingToTask', false);
     dummy.setData('isFollowing', false);
     const meetingsLeft = dummy.getData('emergencyMeetingRem');
+    if (meetingsLeft > 0) {
+      dummy.setData('isPanicking', true);
+      dummy.setData('isFleeing', false);
+      const jitteredLoc = this.getJitteredDestination(
+        emergency_button_loc.x,
+        emergency_button_loc.y,
+        35,
+      );
+      this.commandBotToSpot(dummy, jitteredLoc.x, jitteredLoc.y);
+    } else {
+      dummy.setData('isPanicking', false);
+      dummy.setData('isFleeing', true);
+      dummy.setData('activeThreat', threat);
+      dummy.setData('lastThreatTime', this.time.now);
+      dummy.setData('lastFleePing', 0);
+      dummy.setData('isTravelling', false);
+      dummy.setData('currentPath', []);
+    }
   }
 
   findClosestWalkable(gridX: number, gridY: number): { x: number; y: number } {
@@ -1546,7 +1583,7 @@ export default class BasicScene extends Phaser.Scene {
       completed.push(completedTaskID);
       this.player.setData('completedTasks', completed);
       //  task completion alert for player
-      this.showAlert(`✅ Task complete: ${completedTaskID}`, 'success', 3000);
+      this.showAlert(`Task complete: ${completedTaskID}`, 'success', 3000);
       this.addToShipLog(
         'chris',
         '#ff5544',
@@ -1601,6 +1638,9 @@ export default class BasicScene extends Phaser.Scene {
     (window as any).requestBotMemory = this.requestBotMemory.bind(this);
     (window as any).requestBotRole = this.requestBotRole.bind(this);
     (window as any).requestSetPlayerRole = this.requestSetPlayerRole.bind(this);
+    (window as any).updateBotMemoryFromMeeting =
+      this.updateBotMemoryFromMeeting.bind(this);
+
     console.log('PHASER JUST ATTACHED THE FUNCTION');
     const map = this.add.image(0, 0, 'map_Skeld').setOrigin(0, 0);
     this.physics.world.setBounds(0, 0, map.width, map.height);
@@ -1942,6 +1982,11 @@ export default class BasicScene extends Phaser.Scene {
       frameRate: 45,
       repeat: 0,
     });
+    this.anims.create({
+      key: 'idle',
+      frames: [{ key: 'player_walk', frame: 12 }],
+      frameRate: 20,
+    });
 
     this.cameras.main.setBounds(0, 0, map.width, map.height);
     this.cameras.main.startFollow(this.player, true, 0.5, 0.5).setZoom(1.25);
@@ -1953,13 +1998,13 @@ export default class BasicScene extends Phaser.Scene {
     this.time.delayedCall(800, () => {
       if (this.playerRole === 'impostor') {
         this.showAlert(
-          '💀 You are the IMPOSTOR — kill crewmates to win!',
+          'You are the IMPOSTOR — kill crewmates to win!',
           'danger',
           6000,
         );
       } else {
         this.showAlert(
-          '🚀 You are CREWMATE — complete all tasks to win!',
+          'You are CREWMATE — complete all tasks to win!',
           'info',
           6000,
         );
@@ -1967,29 +2012,36 @@ export default class BasicScene extends Phaser.Scene {
     });
     this.time.delayedCall(7500, () => {
       this.showAlert(
-        '🎮 SPACE: Use / Vent  ·  Q: Kill  ·  R: Report body',
+        'SPACE: Use / Vent  ·  Q: Kill  ·  R: Report body',
         'info',
         5500,
       );
     });
-    this.time.delayedCall(5000, () => {
+    this.time.delayedCall(6500, () => {
+      this.showAlert(
+        'If a Crewmate dies , half of his remaining tasks are splitted among the survivors',
+        'info',
+        5000,
+      );
+    });
+    this.time.delayedCall(4000, () => {
       this.showAlert(
         'You have only 1 emergency meeting , use it carefully !!',
         'info',
-        5100,
+        5000,
       );
     });
 
     this.time.delayedCall(20000, () => {
       if (this.playerRole === 'impostor') {
         this.showAlert(
-          '🔪 Sabotage first — then strike while vision is limited!',
+          'Sabotage first — then strike while vision is limited!',
           'warning',
           5000,
         );
       } else {
         this.showAlert(
-          '🚨 Stay near others. Press R if you find a dead body!',
+          'Stay near others. Press R if you find a dead body!',
           'warning',
           5000,
         );
@@ -2323,6 +2375,13 @@ export default class BasicScene extends Phaser.Scene {
               console.log(
                 `[${dummy.name}] INITIATING COMBO: Sabotaging lights!`,
               );
+              this.time.delayedCall(5000, () => {
+                this.showAlert(
+                  `[HELP]:The impostor has performed a sabotage->kill->vent combo `,
+                  'warning',
+                  10000,
+                );
+              });
               this.executeSabotage(dummy);
             }
 
@@ -2555,31 +2614,11 @@ export default class BasicScene extends Phaser.Scene {
                 const sus = memory.susMatrix[activeThreat.name] || 0;
 
                 if (sus >= 70) {
-                  const meetingsLeft = dummy.getData('emergencyMeetingRem');
-
-                  if (meetingsLeft > 0) {
-                    // PLAN A: Sprint to the button!
-                    console.log(
-                      `[${dummy.name}] TERRIFIED! Sprinting to Emergency Button!`,
-                    );
-                    dummy.setData('isPanicking', true);
-                    this.commandBotToSpot(
-                      dummy,
-                      emergency_button_loc.x,
-                      emergency_button_loc.y,
-                    );
-                  } else {
-                    // PLAN B: I have no meetings left! Run for my life!
-                    console.log(
-                      `[${dummy.name}] TERRIFIED but out of meetings! Fleeing!`,
-                    );
-                    const fleeDistance = 200; // Run far away
-                    const escapeNode = this.calculateEscapePoint(
-                      dummy,
-                      activeThreat,
-                      fleeDistance,
-                    );
-                    this.commandBotToSpot(dummy, escapeNode.x, escapeNode.y);
+                  if (
+                    !dummy.getData('isPanicking') &&
+                    !dummy.getData('isFleeing')
+                  ) {
+                    this.triggerPanicState(dummy, activeThreat);
                   }
                 }
               } else {
@@ -2595,12 +2634,61 @@ export default class BasicScene extends Phaser.Scene {
           }
 
           if (dummy.getData('isFleeing')) {
-            if (currTime - lastThreatTime > RADAR_TICK_MS * 2) {
-              console.log(`[${dummy.name}] ALL CLEAR! Resuming normal duties.`);
-              dummy.setData('isFleeing', false);
-              dummy.setData('activeThreat', null);
-              dummy.setData('isTravelling', false);
-              dummy.setData('currentPath', []);
+            const threat = dummy.getData('activeThreat');
+
+            if (threat && !threat.getData('isDead')) {
+              const currTime = this.time.now;
+              const lastFleePing = dummy.getData('lastFleePing') || 0;
+
+              //  Recalculate Whisker Escape Vector every 200ms
+              if (currTime - lastFleePing > 200) {
+                dummy.setData('lastFleePing', currTime);
+                // Fire the whiskers!
+                const escapeNode = this.calculateEscapePoint(
+                  dummy,
+                  threat,
+                  250,
+                );
+
+                // Use pure physics! If they hit a wall, they slide.
+                const panicSpeed = SPEED;
+                this.physics.moveTo(
+                  dummy,
+                  escapeNode.x,
+                  escapeNode.y,
+                  panicSpeed,
+                );
+              }
+
+              //  Animate the run
+              dummy.play('walk', true);
+              if (
+                dummy.body &&
+                (dummy.body as Phaser.Physics.Arcade.Body).velocity.x < 0
+              ) {
+                dummy.setFlipX(true);
+              } else {
+                dummy.setFlipX(false);
+              }
+
+              // Have we escaped? (The "All Clear")
+              const dist = Phaser.Math.Distance.Between(
+                dummy.x,
+                dummy.y,
+                threat.x,
+                threat.y,
+              );
+              // If threat is 450 pixels away OR 3 seconds have passed, we are safe.
+              if (
+                dist > 450 ||
+                currTime - dummy.getData('lastThreatTime') > RADAR_TICK_MS * 2
+              ) {
+                console.log(`[${dummy.name}] Escaped! Catching breath.`);
+                dummy.setData('isFleeing', false);
+                dummy.setData('activeThreat', null);
+                if (dummy.body)
+                  (dummy.body as Phaser.Physics.Arcade.Body).stop(); // Hit the brakes
+              }
             }
           }
         }
@@ -2698,8 +2786,15 @@ export default class BasicScene extends Phaser.Scene {
               ) as Phaser.GameObjects.Zone;
               if (randomVent) {
                 console.log(
-                  `🥷 [${dummy.name}] decided to roam via Vent to ${randomVent.name}!`,
+                  `[${dummy.name}] decided to roam via Vent to ${randomVent.name}!`,
                 );
+                this.time.delayedCall(5000, () => {
+                  this.showAlert(
+                    `[HELP]: The impostor is venting STAY ALERT!!`,
+                    'danger',
+                    5000,
+                  );
+                });
                 this.commandBotToSpot(dummy, randomVent.x, randomVent.y);
                 dummy.setData('isGoingToVent', true);
                 dummy.setData('entranceVentName', randomVent.name);
@@ -2712,7 +2807,7 @@ export default class BasicScene extends Phaser.Scene {
               const fakeTask = Phaser.Utils.Array.GetRandom(ALL_TASKS);
               const coords = this.getTaskCoordinates(fakeTask.name);
               console.log(
-                `🚶 [${dummy.name}] prowling to fake ${fakeTask.name}...`,
+                ` [${dummy.name}] prowling to fake ${fakeTask.name}...`,
               );
               const targetNode = this.getJitteredDestination(
                 coords.x,
@@ -2772,7 +2867,7 @@ export default class BasicScene extends Phaser.Scene {
               currTaskIndex >= todoTasksIndex.length
             ) {
               if (!dummy.getData('isAllTaskDone')) {
-                console.log(`[${dummy.name}] 🥳 All tasks are done`);
+                console.log(`[${dummy.name}] All tasks are done`);
                 dummy.setData('isAllTaskDone', true);
               }
             }

@@ -65,7 +65,6 @@ export default function RevealFSM({
   onComplete: () => void;
 }) {
   const [act, setAct] = useState<number>(1);
-  const [randNo, setRandNo] = useState<number>(0);
   const audioRef = useRef(new Audio(reveal));
   useEffect(() => {
     const audio = audioRef.current;
@@ -94,47 +93,35 @@ export default function RevealFSM({
   }, [act]);
 
   useEffect(() => {
-    setTimeout(() => {
-      setRandNo(Math.random());
-    });
-  }, []);
-
-  useEffect(() => {
-    const closeTimer = setTimeout(() => {
-      const PLAYER_IMPOSTOR_CHANCE = 1; // Probs of imp
-      let playerRole: 'impostor' | 'crewmate' = 'crewmate';
-      console.error('YOU ARE THE:', randNo, typeof window.requestSetPlayerRole);
+    const waitForPhaser = setInterval(() => {
       if (typeof window.requestSetPlayerRole === 'function') {
-        if (randNo < PLAYER_IMPOSTOR_CHANCE) {
-          playerRole = 'impostor';
-        } else {
-          playerRole = 'crewmate';
-        }
+        clearInterval(waitForPhaser);
+        const PLAYER_IMPOSTOR_CHANCE = 0.6;
+        const playerRole =
+          Math.random() < PLAYER_IMPOSTOR_CHANCE ? 'impostor' : 'crewmate';
         console.error('YOU ARE THE:', playerRole);
         window.requestSetPlayerRole(playerRole);
         setRole(playerRole);
       }
-    }, 1000);
-    return () => clearTimeout(closeTimer);
-  }, [randNo, setRole]);
-
-  useEffect(() => {
+    }, 50);
     const act2Timer = setTimeout(() => {
       setAct(2);
-    }, 500);
+    }, 1500);
     const act3Timer = setTimeout(() => {
       setAct(3);
-    }, 5000);
+    }, 4000);
     const endTImer = setTimeout(() => {
       setAct(4);
       onComplete();
-    }, 3000);
+    }, 5500);
     return () => {
+      clearInterval(waitForPhaser);
       clearTimeout(act2Timer);
       clearTimeout(act3Timer);
       clearTimeout(endTImer);
     };
-  }, [onComplete]);
+  }, [setRole, onComplete]);
+
   if (act === 4) return null;
   return (
     <div className="fixed inset-0 z-50 pointer-events-auto flex items-center justify-center overflow-hidden">
@@ -145,7 +132,7 @@ export default function RevealFSM({
       />
       <AnimatePresence>
         {act === 1 && <ActOne key="act1" />}
-        {act === 2 && <ActTwo key="act2" role={role} />}
+        {(act === 2 || act === 3) && <ActTwo key="act2" role={role} />}
       </AnimatePresence>
       {/* <motion.div
         animate={{ opacity: act === 3 ? 0 : 1 }}

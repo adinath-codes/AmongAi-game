@@ -20,6 +20,7 @@ export interface PlayerData {
   votes: number;
 }
 export interface TYPESMessage {
+  id: string;
   sender: string;
   text: string;
   color: string;
@@ -55,7 +56,7 @@ export default function MeetingModal({
   const [chatInput, setChatInput] = useState('');
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const [confirmedVote, setConfirmedVote] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState<number>(10);
+  const [timeLeft, setTimeLeft] = useState<number>(120);
   const [allVotes, setAllVotes] = useState<Record<string, string>>({});
   const [ejectedPlayer, setEjectedPlayer] = useState<string | null>(null);
   const [isBotTyping, setIsBotTyping] = useState<boolean>(false);
@@ -72,7 +73,15 @@ export default function MeetingModal({
 
   const timeLeftRef = useRef(timeLeft);
   const botTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const phaseRef = useRef(phase);
+  const messagesRef = useRef<TYPESMessage[]>([]);
 
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
   // --- AI Voting Logic ---
   useEffect(() => {
     if (phase === 'Voting') {
@@ -114,7 +123,6 @@ export default function MeetingModal({
   useEffect(() => {
     timeLeftRef.current = timeLeft;
   }, [timeLeft]);
-
   // --- The Tally Logic ---
   useEffect(() => {
     if (phase === 'Results') {
@@ -140,6 +148,7 @@ export default function MeetingModal({
       if (candidates.length === 1 && candidates[0] !== 'skip') {
         ejected = candidates[0];
       }
+      triggerPostMeetingJudge(messagesRef.current);
 
       setTimeout(() => {
         setEjectedPlayer(ejected);
@@ -205,6 +214,13 @@ export default function MeetingModal({
     return () => clearTimeout(timer);
   }, [isOpen, phase, timeLeft, allVotes, players]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      if (botTimerRef.current) clearTimeout(botTimerRef.current);
+      setIsBotTyping(false);
+    }
+  }, [isOpen]);
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
@@ -215,7 +231,9 @@ export default function MeetingModal({
 
     const myData = players.find((p) => p.isMe);
     const text = chatInput.trim();
+    const messageId = crypto.randomUUID();
     const newMessage: TYPESMessage = {
+      id: messageId,
       sender: 'chris',
       text: text,
       color: myData?.color || '#ff0000',
@@ -242,6 +260,7 @@ export default function MeetingModal({
 
       if (targetPlayer && targetPlayer.isDead) {
         const sysMessage: TYPESMessage = {
+          id: crypto.randomUUID(),
           sender: 'system',
           text: `${taggedColor.toUpperCase()} is dead and cannot speak.`,
           color: '#888888',
@@ -265,9 +284,8 @@ export default function MeetingModal({
     }
   };
 
-  //---------BACKEND LOGICS-----------
+  //---------BACKEND LOGICS:chatting-----------
 
-  // 📝 UPDATED: Format looks like a real chat log for the LLM
   const formatChatforLLM = (chatHistory: TYPESMessage[]): string => {
     if (chatHistory.length === 0) return 'No messages yet.';
     return chatHistory
@@ -345,7 +363,8 @@ ${botName.toUpperCase()} says:`;
         body: JSON.stringify({
           model: targetModel,
           prompt: fullPrompt,
-          stream: false,
+          stream: true,
+          keep_alive: '10m',
           options: {
             temperature: 0.8,
             num_predict: 40, // Reduced back to normal to force short sentences
@@ -355,67 +374,170 @@ ${botName.toUpperCase()} says:`;
       });
 
       if (!response.ok) throw new Error(`HTTPS ERROR:${response.status}`);
-      const data = await response.json();
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullReply = '';
+      if (!reader) {
+        throw new Error('Failed to get the stream reader from Ollama.');
+      }
+      const messageId = crypto.randomUUID();
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: messageId,
+          sender: botName,
+          text: '',
+          color: colorCodes[botName],
+          isMe: false,
+        },
+      ]);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(Boolean);
+        for (const line of lines) {
+          const parsed = JSON.parse(line);
+          fullReply += parsed.response;
+          //  The Sanitizer
+          const prefixRegex = new RegExp(`^\\[?${botName}\\]?:?\\s*`, 'i');
+          let cleanReply = fullReply.replace(prefixRegex, '').trimStart();
+          cleanReply = cleanReply.replace(/^["'](.*)["']?$/, '$1'); // Strip quotes
 
-      // 🧼 The Sanitizer
-      let reply = data.response.trim();
-
-      // Fallback: If the model returned absolutely nothing
-      if (!reply) {
-        reply = 'what are u talking about bro';
+          setMessages((prev) => {
+            const newMess = prev.map((msg) =>
+              msg.id === messageId ? { ...msg, text: cleanReply } : msg,
+            );
+            return newMess;
+          });
+        }
       }
 
-      const prefixRegex = new RegExp(`^\\[?${botName}\\]?:?\\s*`, 'i');
-      reply = reply.replace(prefixRegex, '').trim();
-
-      // 3. Remove surrounding quotes
-      reply = reply.replace(/^["'](.*)["']$/, '$1').trim();
-
-      setMessages((prev) => {
-        const messageColor = colorCodes[botName];
-        const updatedChat = [
-          ...prev,
-          { sender: botName, text: reply, color: messageColor, isMe: false },
+      // Fallback: If the model returned absolutely nothing
+      if (!fullReply.trim()) {
+        const fallbacks = [
+          'what are u talking about bro',
+          'idk what that means',
+          'bro is yapping',
+          'cap',
+          'idc im just doing tasks',
+          'skip?',
+          'u sound sus rn',
+          'what',
+          'T_T sed',
+          'can we just vote skip',
         ];
+        const randomFallback =
+          fallbacks[Math.floor(Math.random() * fallbacks.length)];
 
-        if (timeLeftRef.current > 0) {
-          if (!isTagged) {
-            let nextBotName = '';
-            let checkIndex = botOrder.indexOf(botName);
-            let attempts = 0;
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId
+              ? { ...msg, text: randomFallback } // Update the bot's stream
+              : msg,
+          ),
+        );
+      }
 
-            while (attempts < botOrder.length) {
-              checkIndex = (checkIndex + 1) % botOrder.length;
-              const candidateName = botOrder[checkIndex];
-              const candidatePlayer = players.find(
-                (p) => p.id === candidateName,
-              );
+      if (timeLeftRef.current > 0 && phaseRef.current === 'Discussion') {
+        if (!isTagged) {
+          let nextBotName = '';
+          let checkIndex = botOrder.indexOf(botName);
+          let attempts = 0;
 
-              if (candidatePlayer && !candidatePlayer.isDead) {
-                nextBotName = candidateName;
-                break;
-              }
-              attempts++;
+          while (attempts < botOrder.length) {
+            checkIndex = (checkIndex + 1) % botOrder.length;
+            const candidateName = botOrder[checkIndex];
+            const candidatePlayer = players.find((p) => p.id === candidateName);
+
+            if (candidatePlayer && !candidatePlayer.isDead) {
+              nextBotName = candidateName;
+              break;
             }
+            attempts++;
+          }
 
-            if (nextBotName) {
-              botTimerRef.current = setTimeout(
-                () => triggerLLMResponse(updatedChat, nextBotName, false),
-                2500, // Slightly longer gap so humans can read it
-              );
-            }
+          if (nextBotName) {
+            botTimerRef.current = setTimeout(
+              () => triggerLLMResponse(messagesRef.current, nextBotName, false),
+              1000, // Slightly longer gap so humans can read it
+            );
           }
         }
-
-        return updatedChat;
-      });
+      }
     } catch (err) {
       console.error('OLLAMA FAILED:', err);
     } finally {
       setIsBotTyping(false);
     }
   };
+  //---------BACKEND LOGICS:post meeting-----------
+  const FIXED_PLAYER_ORDER = ['pink', 'yellow', 'blue', 'black', 'chris'];
+  const triggerPostMeetingJudge = (finalChatHist: TYPESMessage[]) => {
+    const rawChat = formatChatforLLM(finalChatHist);
+    const aliveBots = players.filter((p) => !p.isDead && !p.isMe);
+    aliveBots.forEach(async (bot) => {
+      const botName = bot.id;
+      const shifts: Record<string, number> = {
+        pink: 0,
+        yellow: 0,
+        blue: 0,
+        black: 0,
+        chris: 0,
+      };
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 4000);
+      try {
+        const response = await fetch('http://localhost:11434/api/generate', {
+          method: 'POST',
+          signal: controller.signal, // Attaches the kill switch to the fetch request
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: botModels[botName],
+            prompt: `Analyze this chat log:\n${rawChat}\n\nBased ONLY on the chat, assign a suspicion shift (-20 to 20) for these players in this EXACT order: PINK, YELLOW, BLUE, BLACK, CHRIS.\nPositive = sus, Negative = safe.\nOutput ONLY 5 comma-separated numbers. Example: 15,-5,0,20,-10`,
+            stream: false,
+            keep_alive: '5m',
+            options: {
+              temperature: 0.1, // Near zero so it does math, not creative writing
+              num_predict: 20, // Hard cap, we only need ~10 tokens for 5 numbers
+            },
+          }),
+        });
+        const data = await response.json();
+        clearTimeout(timeoutId); // Success! Disarm the kill switch.
 
+        // 2. Parse the "10,-5,0,20,5" string
+        const numbers = data.response
+          .split(',')
+          .map((n: string) => parseInt(n.trim(), 10));
+
+        if (numbers.length === 5 && !numbers.some(isNaN)) {
+          FIXED_PLAYER_ORDER.forEach((name, i) => {
+            // Don't let them suspect themselves based on chat
+            shifts[name] = name === botName ? 0 : numbers[i];
+          });
+          console.log(`[${botName}] Parsed chat sus matrix!`, shifts);
+        } else {
+          throw new Error('Corrupted sequence format');
+        }
+      } catch (err) {
+        // 3. THE FALLBACK: If it timed out or hallucinated words instead of numbers
+        console.warn(
+          `[${botName}] Sus-crunch timed out or failed. Applying random jitter.ERROR:${err}`,
+        );
+        FIXED_PLAYER_ORDER.forEach((name) => {
+          if (name !== botName) {
+            shifts[name] = Math.floor(Math.random() * 11) - 5; // Random shift from -5 to +5
+          }
+        });
+      }
+      if (typeof (window as any).updateBotMemoryFromMeeting === 'function') {
+        (window as any).updateBotMemoryFromMeeting(botName, shifts);
+      }
+    });
+  };
   if (!isOpen) return null;
 
   return (
@@ -511,7 +633,7 @@ ${botName.toUpperCase()} says:`;
                       : '(You can vote now)'}
                   </h3>
                   <button
-                    disabled={phase !== 'Voting'}
+                    disabled={phase !== 'Voting' || confirmedVote !== null}
                     onClick={() => {
                       setSelectedVote('skip');
                       setConfirmedVote('skip');
@@ -551,7 +673,9 @@ ${botName.toUpperCase()} says:`;
                     return (
                       <div
                         key={p.id}
-                        onClick={() => setSelectedVote(p.id)}
+                        onClick={() => {
+                          if (!confirmedVote) setSelectedVote(p.id);
+                        }}
                         className={`relative flex items-center gap-3 ${!canVote ? 'cursor-not-allowed' : 'cursor-pointer'} rounded-lg border p-3 transition-all ${p.isDead ? 'border-red-900/50 bg-red-950/20 opacity-50 cursor-not-allowed' : 'border-slate-700 bg-slate-800'} ${isSelected ? 'ring-2 ring-emerald-500 border-emerald-500 bg-emerald-900/20' : ''} ${canVote && !isSelected ? 'hover:border-slate-500 hover:bg-slate-700' : ''}`}
                       >
                         <CrewMateIcon

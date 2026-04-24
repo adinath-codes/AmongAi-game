@@ -61,18 +61,9 @@ export default function GameOverModal({ winner }: TYPEgameOverProps) {
           key="game-over-modal"
           className={`absolute inset-0 z-50 flex flex-col items-center justify-center bg-${baseColor}-950/50 backdrop-blur-sm transition-all `}
           initial={{ opacity: 0 }}
-          // animate={{opacity:1}}
+          animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 1 }}
-          animate={['visible', 'shake']}
-          variants={{
-            visible: { opacity: 1 },
-            shake: {
-              x: [0, -15, 15, -15, 15, 0],
-              y: [0, 15, -15, 15, -15, 0],
-              transition: { delay: 0.2, duration: 0.4, ease: 'easeInOut' },
-            },
-          }}
         >
           <div
             className={`absolute inset-0 opacity-40 ${isCrewWin ? 'bg-[radial-gradient(circle,rgba(0,0,255,0.8)_0%,rgba(0,0,0,1)_70%)]' : 'bg-[radial-gradient(circle,rgba(255,0,0,0.8)_0%,rgba(0,0,0,1)_70%)]'}`}
@@ -83,9 +74,9 @@ export default function GameOverModal({ winner }: TYPEgameOverProps) {
             animate={{ scale: 1, opacity: 1 }}
             transition={{
               type: 'spring',
-              stiffness: 200,
-              damping: 15,
-              mass: 3,
+              stiffness: 300,
+              damping: 35,
+              mass: 1,
               delay: 0.2,
             }}
           >
